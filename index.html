@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Mass shootings per state 2017</title> 
+   
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <script src="http://d3js.org/topojson.v1.min.js"></script>
+  </head>
+  <header>
+      <h1 style="font-family: sans-serif; text-align: center;">Mass shootings per state in 2017</h1>
+  </header>
+  <style>
+      .state-names {
+          font-family: sans-serif;
+          text-align: middle;
+          fill: black;
+          pointer-events: all;
+      }
+      .states {
+        stroke: black;
+        stroke-width: 3px;
+        fill: #E9EDE8;
+        pointer-events: all
+      }
+      .states :hover{
+        fill: #F03737;
+      }
+      /*From studio 5*/
+      div.tooltip {
+        position: absolute;
+        pointer-events: none;
+        text-align: center;
+        width: 60px;
+        height: 50px;
+        padding: 10px;
+        font: 12px sans-serif;
+        background: #ffcccc;
+        border: 4px;
+        border-color: red;
+        stroke: black;
+        border-radius: 2px;
+        opacity: .9;
+      }
+      .timeline {
+        stroke: black;
+        stroke-width: 2px;
+      }
+  </style>
+  <body>
+      <script>
+        var width = 1300;
+        var height = 1000;
+        var timelineWidth = width;
+        var timelineHeight = 100;
+
+          // Referenced Mike Bostock's exanple on bl.ocks
+          var projection = d3.geo.albersUsa()
+              .scale(1500)
+              .translate([600 , height / 3]);
+
+          var path = d3.geo.path()
+                          .projection(projection);
+
+          var svg = d3.select("body")
+                      .append("svg")
+                      .attr({
+                        width: width,
+                        height: height
+                      });
+
+          // Tooltip code from Piazza
+          var tooltip = d3.select("body")
+                          .append("div")
+                          .attr("class", "tooltip");
+          
+          var stateNames = [];
+          var stateInfo = [];
+          var winner = [];
+
+          d3.json("us.json", function(gunMap) {
+            var data = topojson.feature(gunMap, gunMap.objects.states).features;
+            d3.csv("data.csv", function(gunData) {
+              d3.tsv("us-state-names.tsv", function(genStateInfo) {
+                  genStateInfo.forEach(function(d, i) {
+                    stateInfo.push({'id' : genStateInfo[i].id, 
+                                    'code' : genStateInfo[i].code});
+                  });
+                  // console.log(stateInfo); // Correct
+                  gunData.forEach(function(d, i) {
+                    for (var j = 0; j < stateInfo.length; j++) {
+                      if (gunData[i].State == stateInfo[j].code) {
+                        stateInfo[j].State = gunData[i].State;
+                        stateInfo[j].Deaths = gunData[i].Deaths;
+              
+                      }
+                    }
+                  });
+
+                  svg.append("g")
+                    .attr("class", "states")
+                    .selectAll("path")
+                    .data(data)
+                    .enter()
+                    .append("path")
+                    .attr({
+                      "d": path,
+                    })
+                    .attr("fill", function(data) {
+                      var shootings;
+                      for (var i = 0; i < stateInfo.length; i++) {
+                        if (stateInfo[i].id == data.id) {
+                          shootings = stateInfo[i].Deaths;
+                          if ((shootings >= 0) && (shootings < 5)) {
+                            return "#F4D1D1";
+                          } else if ((shootings >= 5) && (shootings < 10)) {
+                            return "#ED7979";
+                          } else if ((shootings >= 10) && (shootings < 20)) {
+                            return "#D00808";
+                          } else if ((shootings >= 20) && (shootings < 30)) {
+                            return "#9A0E0E";
+                          } else if ((shootings >= 30)) {
+                            return "#690202";
+                          }
+                        }
+                      }
+                    })
+                
+                    // Tooltip reference from Piazza
+                    .on("mousemove", function(data) {
+                      var tooltipState;
+                      var tooltipDeaths;
+                     
+                      for (var i = 0; i < stateInfo.length; i++) {
+                        if (stateInfo[i].id == data.id) {
+                          tooltipState = stateInfo[i].State;
+                          tooltipDeaths = stateInfo[i].Deaths;
+                        }
+                      }
+
+                      tooltip.html(tooltipState + "\n" + "Shootings: " + tooltipDeaths)
+                            .style("left", (d3.event.pageX) + "px")     
+                            .style("top", (d3.event.pageY ) + "px")
+                            .style("opacity", .9); 
+                    })
+                    .on("mouseout", function(d) {           
+                        tooltip.style("opacity", 0);    
+                    });
+                    
+                   svg.append("g")
+                    .attr("class", "state-names")
+                    .selectAll("text")
+                    .data(data)
+                    .enter()
+                    .append("text")
+                    .text(function(d, i){
+                      return stateNames[d.id];
+                    })
+
+                    // centroid from bl.ocks
+                    .attr("x", function(d){
+                      return path.centroid(d)[0];
+                    })
+                    .attr("y", function(d){
+                      return  path.centroid(d)[1];
+                    });
+                 
+                });
+            }); 
+          });
+      </script>
+    </body>
+</html>
